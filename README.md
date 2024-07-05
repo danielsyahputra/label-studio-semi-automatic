@@ -23,7 +23,7 @@ Please, make sure you already running the label studio, then
 
 1. Clone the repo
 ```bash
-https://github.com/Kecilin-Team/label-studio-semi-automatic.git
+git clone <ENTER_REPO_HTTP_OR_SSH_PATH>
 
 cd label-studio-semi-automatic
 ```
