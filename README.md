@@ -1,82 +1,107 @@
-## Before using this repository!
-The labels in `model.py` are specific to my project, so please replace them with your own labels and add your trained model weights `best.pt` into the same directory with `model.py`. Also remember to copy/update the contents of your `.env` file to include the variables defined in `.env.example`. (:
+# Semi Automatic Labelling with Ultralytics and Label Studio
 
 ## Quickstart
-Build and start Machine Learning backend on `http://localhost:9090`
+Before using this repository, make sure you are already running label studio. You can see the [Installation Docs](https://labelstud.io/) for the installation. I recommend you to run it using Docker. Here is what command I used for running the label studio.
 
 ```bash
-docker-compose up
+mkdir -p ~/Documents/Personal/label-studio
+cd ~/Documents/Personal/label-studio
+```
+You change change the path according to your preferences.
+
+```bash
+docker run -it --user root -p {PORT}:8080 -v $(pwd)/mydata:/label-studio/data --env LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true --env LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/files -v $(pwd)/myfiles:/label-studio/files heartexlabs/label-studio:latest label-studio
+```
+
+Note: Change value of `PORT` based on your preferences. The command above will mount your local storage to label studio container, check out this [Sync to Local Storage](https://labelstud.io/guide/storage#Local-storage) for more information.
+
+Once the program is succesfully running, you can go to `http://localhost:{PORT}`
+
+## Running Machine Learning Backend
+
+Please, make sure you already running the label studio, then
+
+1. Clone the repo
+```bash
+https://github.com/Kecilin-Team/label-studio-semi-automatic.git
+
+cd label-studio-semi-automatic
+```
+
+2. Edit the .env file
+
+```bash
+cp .env-examples .env
+```
+
+- `BACKEND_PORT` is the port that you want to used to run ML Backend
+- `LABEL_STUDIO_BASEURL` is local url label studio that is already running. e.g (`192.168.42.42:{PORT}`)
+- `LABEL_STUDIO_API_TOKEN` is API token for your label studio
+- `MODEL_DIR` the directory that contains `.pt` and `.yaml` file. I recommend you to make a directory in `weights` folder. Example: `weights/person` will consists `<name>.pt` and `<name>.yaml`
+
+Note: 
+- If you are running the ML backend in Docker, `LABEL_STUDIO_URL` can’t contain localhost or 0.0.0.0. Use the full IP address instead, e.g. `192.168.42.42`. You can get this using the ifconfig (Unix) or ipconfig (Windows) commands.
+- The content of `.yaml` file have to look like this
+```
+names:
+    - person
+    - class_2
+    - class_3
+    .
+    .
+    .
+```
+- 
+
+
+2. Build and start machine learning backend
+
+```bash
+sudo docker-compose up -d --build
 ```
 
 Check if it works:
 
 ```bash
-$ curl http://localhost:9090/health
-{"status":"UP"}
+$ curl http://localhost:{BACKEND_PORT}/health
+
+{"model_dir":"weights/person","status":"UP","v2":false}
 ```
 
-Then connect running backend to Label Studio using Machine Learning settings. 
+## Create Project and Import Dataset
+
+1. Create a Project
+
+I assume you know and already made a project in Label Studio, simply just click the `Create` button on top-left of you label studio UI, then set up your setting such as labels (don't forget to add label names), and also type of annotation which is **Object Detection with Bounding Box**.
 
 
-## Writing your own model
-1. Place your scripts for model training & inference inside root directory. Follow the [API guidelines](#api-guidelines) described bellow. You can put everything in a single file, or create 2 separate one say `my_training_module.py` and `my_inference_module.py`
+2. Import Dataset
 
-2. Write down your python dependencies in `requirements.txt`
+You can simply import the dataset by click `Go to import` then drag your dataset. But, this method can't be done if your dataset is big. So, I recommend you to maybe synchronize the label studio to local storage or using cloud storage service. Now, I'll show you how to synchronize label studio into your local storage.
 
-3. Open `wsgi.py` and make your configurations under `init_model_server` arguments:
-    ```python
-    from my_training_module import training_script
-    from my_inference_module import InferenceModel
-   
-    init_model_server(
-        create_model_func=InferenceModel,
-        train_script=training_script,
-        ...
-    ```
+Go to Settings >> Cloud Storage >> Add Source Storage >> Storage Type >> Local Storage
 
-4. Make sure you have docker & docker-compose installed on your system, then run
-    ```bash
-    docker-compose up --build
-    ```
-   
-## API guidelines
+Then, add your storage title (optional), and absolute local path. Remember in the Quickstart, I already add a command where your local storage will be mount to label studio container, check out this `LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/files` part.
+
+So, if before your ran the quickstart command in `~/Documents/Personal/label-studio`, then, the `myfiles` folder will be created inside of that directory. You can move or copy a folder that contains all you images to annotate inside `myfiles`. Example, we have a dataset contains of images named `person_dataset`, then, copy the `person_dataset` into `~/Documents/Personal/label-studio/myfiles`. At the end you will have a directory `~/Documents/Personal/label-studio/myfiles/person_dataset` in your local that contains a bunch of images.
+
+Then, add your **Absolute local path** to be `/label-studio/files/person_dataset`, activate the toggle button, and Check connection. Finally, you can click **Sync Storage**
+
+Note: See quickstart command where there's a mounting process to `label-studio/files` from your local storage.
 
 
-#### Inference module
-In order to create module for inference, you have to declare the following class:
+## Connect to Machine Learning Backend
 
-```python
-from htx.base_model import BaseModel
+Go to Settings >> Model >> Enter Name >> Enter Backend URL >> Activate Interactive preannotations >> Validate and Save.
 
-# use BaseModel inheritance provided by pyheartex SDK 
-class MyModel(BaseModel):
-    
-    # Describe input types (Label Studio object tags names)
-    INPUT_TYPES = ('Image',)
+Note: If you are running the ML backend in Docker, backend url can’t contain localhost or 0.0.0.0. Use the full IP address instead, e.g. `192.168.42.42`. You can get this using the ifconfig (Unix) or ipconfig (Windows) commands. So, the backend url will be something like this `http://192.168.100.79:{BACKEND_PORT}`
 
-    # Describe output types (Label Studio control tags names)
-    INPUT_TYPES = ('Choices',)
+Then, setup you annotations settings
 
-    def load(self, resources, **kwargs):
-        """Here you load the model into the memory. resources is a dict returned by training script"""
-        self.model_path = resources["model_path"]
-        self.labels = resources["labels"]
+Go to Settings >> Annotations >> Activate Show before labeling >> Activate Use predictions to prelabel tasks >> Select which prediction that you want to use >> Save
 
-    def predict(self, tasks, **kwargs):
-        """Here you create list of model results with Label Studio's prediction format, task by task"""
-        predictions = []
-        for task in tasks:
-            # do inference...
-            predictions.append(task_prediction)
-        return predictions
-```
 
-#### Training module
-Training could be made in a separate environment. The only one convention is that data iterator and working directory are specified as input arguments for training function which outputs JSON-serializable resources consumed later by `load()` function in inference module.
 
-```python
-def train(input_iterator, working_dir, **kwargs):
-    """Here you gather input examples and output labels and train your model"""
-    resources = {"model_path": "some/model/path", "labels": ["aaa", "bbb", "ccc"]}
-    return resources
-```
+## Enjoy Your Annotation
+
+Once all the steps already completed, you can go back to the project and start your annotation. 
