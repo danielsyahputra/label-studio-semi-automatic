@@ -1,11 +1,24 @@
-from label_studio_ml.model import LabelStudioMLBase
-import requests, os
+import pyrootutils
+
+ROOT = pyrootutils.setup_root(
+    search_from=__file__,
+    indicator=[".git",".env"],
+    pythonpath=True,
+    dotenv=True,
+)
+
+import os
+import yaml
+import requests
 from ultralytics import YOLO
 from PIL import Image
 from io import BytesIO
 
+from label_studio_ml.model import LabelStudioMLBase
+
 LS_URL = os.environ['LABEL_STUDIO_BASEURL']
 LS_API_TOKEN = os.environ['LABEL_STUDIO_API_TOKEN']
+
 
 class YOLOv8Model(LabelStudioMLBase):
     def __init__(self, **kwargs):
@@ -15,8 +28,21 @@ class YOLOv8Model(LabelStudioMLBase):
         from_name, schema = list(self.parsed_label_config.items())[0]
         self.from_name = from_name
         self.to_name = schema['to_name'][0]
-        self.labels = [    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck',     'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench',     'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra',     'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',     'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',     'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',     'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',     'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',     'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse',     'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',     'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',     'toothbrush'] 
-        self.model = YOLO("yolov8n.pt")
+        self.init_model()
+
+    def init_model(self):
+        MODEL_DIR = os.environ["MODEL_DIR"]
+        files = os.listdir(MODEL_DIR)
+        weights_exists = False
+        metadata_exists = False
+        for file in files:
+            if file.endswith(".pt"):
+                self.model = YOLO(f"{ROOT}/{MODEL_DIR}/{file}")
+                weights_exists=True
+            if file.endswith(".yaml"):
+                self.labels = yaml.safe_load(open(f"{ROOT}/{MODEL_DIR}/{file}", "r"))['names']
+                metadata_exists = True
+        assert metadata_exists and weights_exists, "Need model (.pt) file and metadata (.yaml) file to run the program."
 
     def predict(self, tasks, **kwargs):
         """ This is where inference happens: model returns 

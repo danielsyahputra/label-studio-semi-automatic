@@ -7,6 +7,9 @@ Pillow>=7.1.2
 PyYAML>=5.3.1
 requests>=2.23.0
 scipy>=1.4.1
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 torch>=1.7.0
 torchvision>=0.8.1
 tqdm>=4.64.0
@@ -19,3 +22,5 @@ thop>=0.1.1  # FLOPs computation
 omegaconf>=2.3.0
 ultralytics
 opencv-python-headless>=4.6.0
+hydra-core
+pyrootutils

@@ -8,24 +8,22 @@ services:
     volumes:
       - "./data/redis:/data"
     expose:
-      - 6379
+      - ${REDIS_PORT}
   server:
     container_name: label-studio-ml
     build: .
     env_file:
       - .env
     environment:
-      - MODEL_DIR=/data/models
       - RQ_QUEUE_NAME=default
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
       - LABEL_STUDIO_USE_REDIS=true
     ports:
-      - 4040:9090
+      - ${BACKEND_PORT}:9090
     depends_on:
       - redis
     links:
       - redis
     volumes:
-      - "./data/server:/data"
+      - "./weights:/data"
       - "./logs:/tmp"

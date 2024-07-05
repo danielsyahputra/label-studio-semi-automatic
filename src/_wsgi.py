@@ -1,4 +1,5 @@
 import os
+import json
 import argparse
 import logging
 import logging.config
@@ -28,7 +29,7 @@ logging.config.dictConfig({
 })
 
 from label_studio_ml.api import init_app
-from model import YOLOv8Model
+from src.model import YOLOv8Model
 
 
 _DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -105,7 +106,7 @@ if __name__ == "__main__":
         model = YOLOv8Model(**kwargs)
 
     app = init_app(
-        model_class=YOLOModel,
+        model_class=YOLOv8Model,
         model_dir=os.environ.get('MODEL_DIR', args.model_dir),
         redis_queue=os.environ.get('RQ_QUEUE_NAME', 'default'),
         redis_host=os.environ.get('REDIS_HOST', 'localhost'),
