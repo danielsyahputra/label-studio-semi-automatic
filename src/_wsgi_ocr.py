@@ -26,7 +26,7 @@ logging.config.dictConfig(
 
 from label_studio_ml.api import init_app
 
-from src.model import YOLOv8Model
+from src.model_ocr import OCRModel
 
 _DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
@@ -114,26 +114,13 @@ if __name__ == "__main__":
         kwargs.update(parse_kwargs())
 
     if args.check:
-        print('Check "' + YOLOv8Model.__name__ + '" instance creation..')
-        model = YOLOv8Model(**kwargs)
+        print('Check "' + OCRModel.__name__ + '" instance creation..')
+        model = OCRModel(**kwargs)
 
-    app = init_app(
-        model_class=YOLOv8Model,
-        model_dir=os.environ.get("MODEL_DIR", args.model_dir),
-        redis_queue=os.environ.get("RQ_QUEUE_NAME", "default"),
-        redis_host=os.environ.get("REDIS_HOST", "localhost"),
-        redis_port=os.environ.get("REDIS_PORT", 6379),
-        **kwargs
-    )
+    app = init_app(model_class=OCRModel, **kwargs)
 
     app.run(host=args.host, port=args.port, debug=args.debug)
 
 else:
     # for uWSGI use
-    app = init_app(
-        model_class=YOLOv8Model,
-        model_dir=os.environ.get("MODEL_DIR", os.path.dirname(__file__)),
-        redis_queue=os.environ.get("RQ_QUEUE_NAME", "default"),
-        redis_host=os.environ.get("REDIS_HOST", "localhost"),
-        redis_port=os.environ.get("REDIS_PORT", 6379),
-    )
+    app = init_app(model_class=OCRModel)
